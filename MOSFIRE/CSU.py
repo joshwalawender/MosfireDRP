@@ -156,6 +156,13 @@ def bar_to_slit(x):
         raise MismatchError("Not indexing CSU properly")
     return int(x+1)//2
 
+def slit_to_bars(slit):
+    '''Convert a slit number (1-46) to a bar pair (1-92)'''
+    if (slit < 1) or (slit > numbars/2):
+        error("Not indexing CSU properly")
+        raise MismatchError("Not indexing CSU properly")
+    return ((slit-1)*2+1, (slit-1)*2+2)
+
 def to_ds9_region(poss, dash=1, color="green", label=True):
     s = []
     d = np.radians(4.2)
