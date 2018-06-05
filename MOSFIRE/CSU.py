@@ -184,7 +184,29 @@ def to_ds9_region(poss, dash=1, color="green", label=True):
 
 
 class Barset(object):
-    '''Barset provides convenience functions around a CSU slitmask'''
+    '''Barset provides convenience functions around a CSU slitmask.
+    
+    Attributes:
+        pos (np.array): A list of the mechanical positions of each bar in mm.
+        ssl (FITS_rec): A table of the "science slit list" containing a list of
+            each science slit created in the mask.  Science slits may be made
+            up of multiple CSU slits (which are made up of two corresponding 
+            CSU bars).  This table contains information on the slit position in
+            sky coordinates (RA and Dec), slit width (in arcseconds), slit
+            length, the target's position in the slit (from the mask design
+            step), target name, and target priority.
+        msl (FITS_rec): A table of the "mechanical slit list" containing a list
+            of CSU slits (each made up of two CSU bars), their corresponding
+            target name from the mask design, target priority, slit position
+            (in mm), slit width (in arcseconds), and the target's position in
+            the slit (from the mask design step).
+        asl ():
+        targs (FITS_rec): A table of the targets from the mask design step.
+            Each target's priority, magnitude, and position (RA and Dec) are
+            given.  The number of targets should match the number of science
+            slits in the `ssl` attribute and the target names should be the
+            same.
+    '''
 
     pos = [] 
     pos_pix = []
