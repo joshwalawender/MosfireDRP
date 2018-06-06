@@ -10,25 +10,32 @@ MOSFIRE Flat Fields
 npk April 14th 2011
 Modifications:
 
-2013-08-29:  T. Do - added 'edgeThreshold' keyword as well as changed the initial guess for the edge location when using long slits
+2013-08-29:  T. Do - added 'edgeThreshold' keyword as well as changed the
+                     initial guess for the edge location when using long slits
 
-2014-01-09:  MK - Functions added to subtract dome "lamps off/thermal" flats from the dome "lamps on" flats. 
-                  The functions combine both sets of flats using your current method to create a lamps on and 
-                  lamps off flat, and then subtracts those two images to remove the contribution of the dome 
-                  emission. Files renamed combflat_lamps_on* and combflat_lamps_off*. The final flat has the 
-                  same name that you output: combflat_2s_band_.fits .
+2014-01-09:  MK - Functions added to subtract dome "lamps off/thermal" flats
+                  from the dome "lamps on" flats. The functions combine both
+                  sets of flats using your current method to create a lamps on
+                  and lamps off flat, and then subtracts those two images to
+                  remove the contribution of the dome emission. Files renamed 
+                  combflat_lamps_on* and combflat_lamps_off*. The final flat
+                  has the same name that you output: combflat_2s_band_.fits .
 
-                  To reduce the thermal flats, the flat functions have an optional keyword for the 
-                  "lampOffList" that acts as the reduction trigger. The driver file should include a call 
+                  To reduce the thermal flats, the flat functions have an
+                  optional keyword for the "lampOffList" that acts as the
+                  reduction trigger. The driver file should include a call
                   like the example below.
-                      Flats.handle_flats('Flat.txt', maskname, band, flatops, lampOffList='FlatThermal.txt')
+                  Flats.handle_flats('Flat.txt', maskname, band, flatops,
+                                     lampOffList='FlatThermal.txt')
 
-2014-04-27:  MK - Nick released a new version of the DRP in March. I merged the differences between the code 
-                  that I downloaded March 14 (Nick K.'s updated code to use file lists) with the code we 
-                  developed to use the thermal flatts.    
+2014-04-27:  MK - Nick released a new version of the DRP in March. I merged the
+                  differences between the code that I downloaded March 14
+                  (Nick K.'s updated code to use file lists) with the code we
+                  developed to use the thermal flats.
 
-2014-06-12:  MK - Nick released a new version of the DRP in June 2013. I merged the differences between the code 
-                  modified on April 27 and the 10 June release. Tested with K-band data and appears to work
+2014-06-12:  MK - Nick released a new version of the DRP in June 2013. I merged
+                  the differences between the code modified on April 27 and the
+                  10 June release. Tested with K-band data and appears to work
                   as expected. 
 '''
 
@@ -54,7 +61,9 @@ __version__ = 0.1
 #from IPython.Shell import IPShellEmbed
 #start_shell = IPShellEmbed()
 
-def handle_flats(flatlist, maskname, band, options, extension=None,edgeThreshold=450,lampOffList=None,longslit=None):
+def handle_flats(flatlist, maskname, band, options, extension=None, 
+                 edgeThreshold=450, lampOffList=None, longslit=None,
+                 ):
     '''
     handle_flats is the primary entry point to the Flats module.
 
