@@ -188,6 +188,7 @@ class Barset(object):
     
     Attributes:
         pos (np.array): A list of the mechanical positions of each bar in mm.
+            Derived from the header via the `set_header` method.
         ssl (FITS_rec): A table of the "science slit list" containing a list of
             each science slit created in the mask.  Science slits may be made
             up of multiple CSU slits (which are made up of two corresponding 
