@@ -97,16 +97,33 @@ def handle_flats(flatlist, maskname, band, options, extension=None,
         debug(str(flat))
 
     #Determine if flat files headers are in agreement
+    bs0 = None
+    pos0 = None
     for fname in flatlist:
 
         hdr, dat, bs = IO.readmosfits(fname, options, extension=extension)
-        try: bs0
-        except: bs0 = bs
 
-        if np.any(bs0.pos != bs.pos):
-            print("bs0: "+str(bs0.pos)+" bs: "+str(bs.pos))
-            error("Barset do not seem to match")
+        bars_in_use = []
+        for i in range(len(bs.ssl)):
+            slits = bs.scislit_to_csuslit(i+1)
+            for slit in slits:
+                bars_in_use.extend(CSU.slit_to_bars(slit))
+
+        if pos0 is None:
+            bs0 = bs
+            pos0 = [bs.pos[i-1] for i in bars_in_use]
+        pos = [bs.pos[i-1] for i in bars_in_use]
+
+        if np.any(pos0 != pos):
+            print(pos0)
+            print(pos)
+            print(bs0.pos)
+            print(bs.pos)
+            error(f"Barsets do not seem to match for {fname}")
             raise Exception("Barsets do not seem to match")
+        else:
+            debug(f"Barsets match for {fname}")
+
 
         if hdr["filter"] != band:
             error ("Filter name %s does not match header filter name "
