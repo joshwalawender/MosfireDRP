@@ -717,9 +717,14 @@ def find_and_fit_edges(data, header, bs, options,edgeThreshold=450):
     Given a flat field image, find_and_fit_edges determines the position
     of all slits.
 
-    The function works by starting with a guess at the location for a slit
-    edge in the spatial direction(options["first-slit-edge"]). 
-    
+    This function loops over all science slits from the "science slit list"
+    in the Barset.  It uses the CSU convienience functions to estimate initial
+    positions of the top and bottom edge of the slit, then it fits those Y
+    pixel positions as a function of X pixel position by looking for the
+    transition between the bright slit above and below the current slit (using
+    find_edge_pair).  At the top and bottom of the chip, it assumes a boundary
+    rather than fitting.
+
     Starting from the guess, find_edge_pair works out in either direction, 
     measuring the position of the (e.g.) bottom of slit 1 and top of slit 2:
 
@@ -738,24 +743,8 @@ def find_and_fit_edges(data, header, bs, options,edgeThreshold=450):
 
     --------------------------------> Spectral direction
 
-
-    1. At the top of the flat, the slit edge is defined to be a pixel value
-    2. The code guesses the position of the bottom of the slit, and runs
-            find_edge_pair to measure slit edge locations.
-    3. A low-order polynomial is fit to the edge locations with
-            fit_edge_poly
-    4. The top and bottom of the current slit, is stored into the
-            result list.
-    5. The top of the next slit is stored temporarily for the next
-            iteration of the for loop.
-    6. At the bottom of the flat, the slit edge is defined to be pixel 4.
-
-
-    options:
-    options["edge-order"] -- The order of the polynomial [pixels] edge.
-    options["edge-fit-width"] -- The length [pixels] of the edge to 
-            fit over
-
+    Note this logic changed after the 2018 release, see this docstring prior to
+    that release for details on the old method.
     '''
     numslits = np.array([len((np.where(slit["Target_Name"]
                          == bs.msl["Target_in_Slit"]))[0])
@@ -838,7 +827,6 @@ def find_and_fit_edges(data, header, bs, options,edgeThreshold=450):
             xposs_bot = xposs_top
             bottom_edge_fn = np.poly1d(4)
 
-        #4
         result = {}
         result["Target_Name"] = scislit["Target_Name"]
         result["xposs_top"] = xposs_top
