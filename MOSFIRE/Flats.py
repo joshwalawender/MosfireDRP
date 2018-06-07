@@ -757,265 +757,104 @@ def find_and_fit_edges(data, header, bs, options,edgeThreshold=450):
             fit over
 
     '''
-#     TODO: move hardcoded values into Options.py
-#     y is the location to start
-#     y = 2034
-#     if the mask is a long slit, the default y value will be wrong. Set instead to be the middle
-#     if bs.long_slit:
-#         y = 1104
-#     DY = 44.25
-# 
-#     ssl = bs.ssl
-# 
-#     slits = []
-# 
-#     top = [0., np.float(Options.npix)]
-# 
-#     start_slit_num = int(bs.msl[0]['Slit_Number'])-1
-#     if start_slit_num > 0:
-#         y -= DY * start_slit_num
-
     numslits = np.array([len((np.where(slit["Target_Name"]
                          == bs.msl["Target_in_Slit"]))[0])
-                         for slit in ssl])
+                         for slit in bs.ssl])
 
     # now begin steps outline above
     results = []
-    result = {}
-
     DY = 44.25
-
-
-
-    xposs_top = np.arange(10,2000,100)
     vertical_profile = np.mean(data, axis=1)
     for i,scislit in enumerate(bs.ssl):
+        xposs_top = np.arange(10,2000,100)
+        result = {}
+        info(f'[{i:02d}] Finding Slit Edges for {scislit["Target_Name"]}')
         result["Target_Name"] = scislit["Target_Name"]
-        csuslits = bs.scislit_to_csuslit(i)
-        top_pixel_est = min([2034,bs.csu_slit_to_pixel(csuslits[0]) + DY/2])
-        bottom_pixel_est = max([1,bs.csu_slit_to_pixel(csuslits[-1]) - DY/2])
-        center_pixel_est = (top_pixel_est + bottom_pixel_est)/2
-        result["top"] = np.poly1d([top_pixel_est])
-        yposs_top_this = result["top"](xposs_top)
 
         numslits = len(np.where(scislit['Target_Name'] == bs.msl["Target_in_Slit"])[0])
+        csuslits = bs.scislit_to_csuslit(i+1)
+        assert numslits == len(csuslits)
+        info(f'  Slit composed of {numslits} CSU slits: {csuslits}')
+
+        top_pixel_est = min([2034,bs.csu_slit_to_pixel(csuslits[0]) + DY/2])
+        info(f'  Slit top near {top_pixel_est:.0f}.')
+        bottom_pixel_est = max([1,bs.csu_slit_to_pixel(csuslits[-1]) - DY/2])
+        info(f'  Slit bottom near {bottom_pixel_est:.0f}.')
+        center_pixel_est = int((top_pixel_est + bottom_pixel_est)/2)
 
         # select a 6 pixel wide section of the vertical profile around the slit center
         threshold_area = vertical_profile[center_pixel_est-3:center_pixel_est+3]
         # uses 80% of the ADU counts in the threshold area to estimate the threshold to use in defining the slits
         edgeThreshold = np.mean(threshold_area)*0.8
-
-        info(f'[{i:02d}] Finding Slit Edges for {scislit["Target_Name"]}')
-        info(f'  Slit composed of {numslits} CSU slits')
-        info(f'  Slit top near {top_pixel_est:.0f}.'
-        info(f'  Slit bottom near {bottom_pixel_est:.0f}.'
         info(f'  Threshold used is {edgeThreshold:.1f}')
 
+        info(f'  Calculating half power points (hpps)')
         hpps = Wavelength.estimate_half_power_points(csuslits[0], header, bs)
 
-        edge_pair_results = find_edge_pair(data, top_pixel_est,
-                                           options["edge-fit-width"],
-                                           edgeThreshold=edgeThreshold)
-        # split output
-        (xposs_top_next, xposs_top_next_missing, yposs_top_next, xposs_bot,
-            xposs_bot_missing, yposs_bot, scatter_bot_this) = edge_pair_results
+        if i > 0:
+            info('   Finding edge pairs at top of slit')
+            top_edge_pair_results = find_edge_pair(data, top_pixel_est,
+                                               options["edge-fit-width"],
+                                               edgeThreshold=edgeThreshold)
+            xposs_top = top_edge_pair_results[3]
+            xposs_top_missing = top_edge_pair_results[4]
+            yposs_top = top_edge_pair_results[5]
 
-        ok = np.where((xposs_bot > hpps[0]) & (xposs_bot < hpps[1]))
-        ok2 = np.where( (xposs_bot_missing > hpps[0])\
-                        & (xposs_bot_missing < hpps[1]) )
-        xposs_bot = xposs_bot[ok]
-        xposs_bot_missing = xposs_bot_missing[ok2]
-        yposs_bot = yposs_bot[ok]
-        if len(xposs_bot) == 0:
-            botfun = np.poly1d(top_pixel_est-DY)
+            ok = np.where((xposs_top > hpps[0]) & (xposs_top < hpps[1]))
+            ok2 = np.where( (xposs_top_missing > hpps[0])\
+                            & (xposs_top_missing < hpps[1]) )
+            xposs_top = xposs_top[ok]
+            xposs_top_missing = xposs_top_missing[ok2]
+            yposs_top = yposs_top[ok]
+            if len(xposs_top) == 0:
+                top_edge_fn = np.poly1d(top_pixel_est)
+            else:
+                (top_edge_fn, top_res, topsd, topok) =  fit_edge_poly(xposs_top,
+                         xposs_top_missing, yposs_top, options["edge-order"])
         else:
-            (botfun, bot_res, botsd, botok) =  fit_edge_poly(xposs_bot,
-                     xposs_bot_missing, yposs_bot, options["edge-order"])
+            top_edge_fn = np.poly1d([top_pixel_est])
 
-        bot = botfun.c.copy()
-        top = topfun.c.copy()
-
-        #4
-        result = {}
-        result["Target_Name"] = scislit["Target_Name"]
-        result["xposs_top"] = xposs_top_this
-        result["yposs_top"] = yposs_top_this
-        result["xposs_bot"] = xposs_bot
-        result["yposs_bot"] = yposs_bot
-        result["top"] = np.poly1d(top)
-        result["bottom"] = np.poly1d(bot)
-        result["hpps"] = hpps
-        result["ok"] = ok
-        results.append(result)
-
-        #5
-        next = target + 2
-        if next > len(ssl): next = len(ssl)
-        hpps_next = Wavelength.estimate_half_power_points(
-                bs.scislit_to_csuslit(next)[0],
-                    header, bs)
-
-        ok = np.where((xposs_top_next > hpps_next[0]) & (xposs_top_next <
-            hpps_next[1]))
-        ok2 = np.where((xposs_top_next_missing > hpps_next[0]) &
-            (xposs_top_next_missing < hpps_next[1]))
-
-        xposs_top_next = xposs_top_next[ok]
-        xposs_top_next_missing = xposs_top_next_missing[ok2]
-        yposs_top_next = yposs_top_next[ok]
-
-        if len(xposs_top_next) == 0:
-            topfun = np.poly1d(y)
-        else:
-            (topfun, topres, topsd, ok) = fit_edge_poly(xposs_top_next,
-                xposs_top_next_missing, yposs_top_next, options["edge-order"])
-
-        xposs_top_this = xposs_top_next
-        xposs_top_this_missing = xposs_top_next_missing
-        yposs_top_this = yposs_top_next
-
-    results.append({"version": options["version"]})
-
-    return results
-
-
-
-
-
-
-    result["Target_Name"] = bs.ssl[0]["Target_Name"]
-
-    # 1
-    result["top"] = np.poly1d([y])
-
-    ''' Nomenclature here is confusing:
-        
-        ----- Edge  -- Top of current slit, bottom of prev slit
-        . o ' Data
-        ===== Data
-        .;.;' Data
-        ----- Edge  -- Bottom of current slit, top of next slit
-    '''
-
-    topfun = np.poly1d([y])
-    xposs_top_this = np.arange(10,2000,100)
-    yposs_top_this = topfun(xposs_top_this)
-
-    initial_edges = np.array([2034], dtype=np.int)
-    edge = 2034
-
-    # build an array of values containing the lower edge of the slits
-    
-    for target in range(len(ssl)):
-    # target is the slit number
-        edge -= DY * numslits[target]
-        initial_edges=np.append(initial_edges,int(edge))
-
-    # collapse the 2d flat along the walenegth axis to build a spatial profile of the slits
-    vertical_profile = np.mean(data, axis=1)
-
-    # build an array containing the spatial positions of the slit centers, basically the mid point between the expected
-    # top and bottom values of the slit pixels
-    spatial_centers = np.array([], dtype=np.int)
-    for k in np.arange(0,len(initial_edges)-1):
-        spatial_centers = np.append(spatial_centers,(initial_edges[k]+initial_edges[k+1])//2)
-    #slit_values=np.array([])
-    #for k in np.arange(0, len(spatial_centers)):
-    #    slit_values = np.append(slit_values,np.mean(vertical_profile[spatial_centers[k]-3:spatial_centers[k]+3]))
-    
-    for target in range(len(ssl)):
-
-        y -= DY * numslits[target]
-        y = max(y, 1)
-        # select a 6 pixel wide section of the vertical profile around the slit center
-        threshold_area = vertical_profile[spatial_centers[target]-3:spatial_centers[target]+3]
-        # uses 80% of the ADU counts in the threshold area to estimate the threshold to use in defining the slits
-        edgeThreshold = np.mean(threshold_area)*0.8
-        #if edgeThreshold > 450:
-        #    edgeThreshold = 450
-        
-        info("[%2.2i] Finding Slit Edges for %s ending at %4.0i. Slit "
-                "composed of %i CSU slits" % ( target,
-                    ssl[target]["Target_Name"], y, numslits[target]))
-        info("[%2.2i] Threshold used is %.1f" % (target,edgeThreshold))
-
-        ''' First deal with the current slit '''
-        hpps = Wavelength.estimate_half_power_points(
-                bs.scislit_to_csuslit(target+1)[0], header, bs)
-
-        if y == 1:
-            xposs_bot = [1024]
-            xposs_bot_missing = []
-            yposs_bot = [4.25]
-            botfun = np.poly1d(yposs_bot)
-            ok = np.where((xposs_bot > hpps[0]) & (xposs_bot < hpps[1]))
-        else:
-            (xposs_top_next, xposs_top_next_missing, yposs_top_next, xposs_bot,
-                xposs_bot_missing, yposs_bot, scatter_bot_this) = find_edge_pair(
-                    data, y, options["edge-fit-width"],edgeThreshold=edgeThreshold)
+        if bottom_pixel_est > 1:
+            info('   Finding edge pairs at bottom of slit')
+            bottom_edge_pair_results = find_edge_pair(data, bottom_pixel_est,
+                                               options["edge-fit-width"],
+                                               edgeThreshold=edgeThreshold)
+            xposs_bot = bottom_edge_pair_results[3]
+            xposs_bot_missing = bottom_edge_pair_results[4]
+            yposs_bot = bottom_edge_pair_results[5]
 
             ok = np.where((xposs_bot > hpps[0]) & (xposs_bot < hpps[1]))
-            ok2 = np.where((xposs_bot_missing > hpps[0]) & (xposs_bot_missing <
-                hpps[1]))
+            ok2 = np.where( (xposs_bot_missing > hpps[0])\
+                            & (xposs_bot_missing < hpps[1]) )
             xposs_bot = xposs_bot[ok]
             xposs_bot_missing = xposs_bot_missing[ok2]
             yposs_bot = yposs_bot[ok]
             if len(xposs_bot) == 0:
-                botfun = np.poly1d(y-DY)
+                bottom_edge_fn = np.poly1d(bottom_pixel_est)
             else:
-                (botfun, bot_res, botsd, botok) =  fit_edge_poly(xposs_bot,
+                (bottom_edge_fn, bot_res, botsd, botok) =  fit_edge_poly(xposs_bot,
                          xposs_bot_missing, yposs_bot, options["edge-order"])
-
-
-        bot = botfun.c.copy() 
-        top = topfun.c.copy()
+        else:
+            xposs_bot = xposs_top
+            bottom_edge_fn = np.poly1d(4)
 
         #4
         result = {}
-        result["Target_Name"] = ssl[target]["Target_Name"]
-        result["xposs_top"] = xposs_top_this
-        result["yposs_top"] = yposs_top_this
+        result["Target_Name"] = scislit["Target_Name"]
+        result["xposs_top"] = xposs_top
+        result["yposs_top"] = top_edge_fn(xposs_top)
         result["xposs_bot"] = xposs_bot
-        result["yposs_bot"] = yposs_bot
-        result["top"] = np.poly1d(top)
-        result["bottom"] = np.poly1d(bot)
+        result["yposs_bot"] = bottom_edge_fn(xposs_bot)
+        result["top"] = np.poly1d(top_edge_fn.c.copy())
+        result["bottom"] = np.poly1d(bottom_edge_fn.c.copy())
         result["hpps"] = hpps
         result["ok"] = ok
         results.append(result)
 
-        #5
-        if y == 1:
-            break
-            
-
-        next = target + 2
-        if next > len(ssl): next = len(ssl)
-        hpps_next = Wavelength.estimate_half_power_points(
-                bs.scislit_to_csuslit(next)[0],
-                    header, bs)
-
-        ok = np.where((xposs_top_next > hpps_next[0]) & (xposs_top_next <
-            hpps_next[1]))
-        ok2 = np.where((xposs_top_next_missing > hpps_next[0]) &
-            (xposs_top_next_missing < hpps_next[1]))
-
-        xposs_top_next = xposs_top_next[ok]
-        xposs_top_next_missing = xposs_top_next_missing[ok2]
-        yposs_top_next = yposs_top_next[ok]
-
-        if len(xposs_top_next) == 0:
-            topfun = np.poly1d(y)
-        else:
-            (topfun, topres, topsd, ok) = fit_edge_poly(xposs_top_next,
-                xposs_top_next_missing, yposs_top_next, options["edge-order"])
-
-        xposs_top_this = xposs_top_next
-        xposs_top_this_missing = xposs_top_next_missing
-        yposs_top_this = yposs_top_next
-
     results.append({"version": options["version"]})
 
     return results
+
 
 class FitCheck(object):
     flat = None
