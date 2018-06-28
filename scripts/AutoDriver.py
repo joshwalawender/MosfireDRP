@@ -347,7 +347,7 @@ def OffsetPairs():
 
 def SetupFiles(target=None, offsets=None, type=None):
     # convert numbers such as 1.0 to 1, but leaves 1.5 as 1.5
-    offsets = [int(f) if f % 1 ==0 else f for f in offsets]
+#     offsets = [int(f) if f % 1 ==0 else f for f in offsets]
     setupLines = []
     obsFiles = []
     specphot = False
