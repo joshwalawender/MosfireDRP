@@ -429,12 +429,11 @@ if len(sys.argv) == 3:
 
 targets_and_offsets,type = OffsetPairs()
 
-
 if 'slitmask' in targets_and_offsets:
     print("slitmask mode")
     mydriver=Driver("Driver.py","slitmask")
-    mydriver.printHeader()    
-    obsLines,obsFiles,specphot = SetupFiles('slitmask',targets_and_offsets['slitmask'],type)   
+    mydriver.printHeader()
+    obsLines,obsFiles,specphot = SetupFiles('slitmask',targets_and_offsets['slitmask'],type)
     mydriver.addOffsetFiles(obsFiles)
     mydriver.printMaskAndBand()
     mydriver.printnoninteractive(noninteractive=noninteractiveval)
