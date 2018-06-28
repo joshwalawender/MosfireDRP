@@ -245,7 +245,7 @@ class Barset(object):
         # If len(ssl) == 0 then the header is for a long slit
         if (header['MASKNAME'] == 'long2pos'):
             info("long2pos mode in CSU slit determination")
-            self.long2pos_slit = True
+#             self.long2pos_slit = True
 
         if (len(ssl) == 0):
         
