@@ -303,6 +303,18 @@ class Barset(object):
 
         return (os+es)/2.
         
+    def csu_slit_width(self, slitno):
+        if (slitno < 1) or (slitno > 46):
+            error("The requested slit number (%i) does not exist" % 
+                    slitno)
+            raise Exception("The requested slit number (%i) does not exist" % 
+                    slitno)
+
+        os = self.pos[slitno*2 - 2]
+        es = self.pos[slitno*2 - 1]
+
+        return es-os
+        
     def scislit_to_csuslit(self, scislit):
         '''Convert a science slit number to a mechanical slit list'''
         if (scislit < 1) or (scislit > len(self.ssl)+1):
