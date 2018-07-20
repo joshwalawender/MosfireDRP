@@ -7,6 +7,8 @@ import argparse
 import glob
 import re
 import os
+import yaml
+import numpy as np
 
 import ccdproc
 from astropy.table import Table, Column
@@ -31,6 +33,7 @@ def main():
     keywords = ['pwstata7', 'pwstata8', 'pwloca7', 'pwloca8', 'aborted',
                 'datafile', 'object', 'truitime', 'maskname', 'mgtname',
                 'filter', 'flatspec', 'xoffset', 'yoffset', 'targname',
+                'frameid',
                 ]
     ifc = ccdproc.ImageFileCollection(filepath, keywords=keywords)
     files = ifc.summary
@@ -146,17 +149,37 @@ def main():
             # Sort mask files in to offsets
             if len(mask_files) > 0:
                 offset_table = mask_files.group_by('yoffset')
+                # Write mask.txt file with mask info
+                if not path.exists(maskname):
+                    os.mkdir(maskname)
+                if not path.exists(filterpath):
+                    os.mkdir(filterpath)
+                offsets = []
                 for group in offset_table.groups:
                     offset = group[0]['yoffset']
+                    offsets.append(offset)
                     print(f'  Found {len(group)} {filter} Offset {offset} files')
-                    if not path.exists(maskname):
-                        os.mkdir(maskname)
-                    if not path.exists(filterpath):
-                        os.mkdir(filterpath)
                     with open(path.join(filterpath, f'Offset_{offset:.1f}.txt'), 'w') as offset_txt:
                         offset_txt.write(f"{filepath} # Abs. path to files [optional]\n")
                         for entry in group:
                             offset_txt.write(f"{entry['file']} # \n")
+                # write out YAML file with dictionary of information
+                mean_itime = np.mean(mask_files['truitime'])
+                stddev_itime = np.std(mask_files['truitime'])
+                info = {'maskname': str(maskname),
+                        'exptime': float(mean_itime),
+                        'exptime_stddev': float(stddev_itime),
+                        'filter': str(filter),
+                        'offsets': [f"{o:.1f}" for o in offsets],
+                        'offset_files': [f'Offset_{o:.1f}.txt' for o in offsets],
+                        'mask_files': [str(f) for f in mask_files['file']],
+                        'Ne_files': [str(f) for f in arc7_files['file']],
+                        'Ar_files': [str(f) for f in arc8_files['file']],
+                        'flat_files': [str(f) for f in flat_files['file']],
+                        'thermal_flats': [str(f) for f in thermal_flats['file']],
+                        }
+                with open(path.join(filterpath, 'mask.txt'), 'w') as mask_txt:
+                    yaml.dump(info, mask_txt)
 
 
 if __name__ == '__main__':
