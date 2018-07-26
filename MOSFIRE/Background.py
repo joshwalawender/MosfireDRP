@@ -41,9 +41,18 @@ def guess_plan_from_positions(posnames):
         return [["A", "B"]]
     elif posnames == set(["A'", "B'", "A", "B"]): 
         return [["A", "B"], ["A'", "B'"]]
+    elif posnames == set(["A", "B", "C"]):
+        return [["A", "B"], ["C"]]
     else:
-        raise Exception("Could not get observing plan from positions %s. "
-                        "You must use the plan keyword" % posnames)
+        foo = set(posnames)
+        plan = []
+        for i in range(0, len(foo) - len(foo) % 2, 2):
+            plan.append([list(foo)[i], list(foo)[i+1]])
+        if len(foo) % 2 == 1:
+            plan.append([list(foo)[-1]])
+        return plan
+#        raise Exception("Could not get observing plan from positions %s. "
+#                        "You must use the plan keyword" % posnames)
 
 
 def imcombine(files, maskname, options, flat, outname=None, shifts=None,
@@ -473,6 +482,7 @@ def handle_background(filelist, wavename, maskname, band_name, options,
 
     num_outputs = len(plan)
 
+    info(f"The plan is: '{plan}'")
 
     edges, meta = IO.load_edges(maskname, band, options)
     lam = IO.readfits(wavename, options)
@@ -480,27 +490,42 @@ def handle_background(filelist, wavename, maskname, band_name, options,
     bs = bss[0]
 
     for i in range(num_outputs):
-        posname0 = plan[i][0]
-        posname1 = plan[i][1]
-        info("Handling %s - %s" % (posname0, posname1))
-        data = epss[posname0] - epss[posname1]
-        Var = vars[posname0] + vars[posname1]
-        itime = np.mean([times[posname0], times[posname1]], axis=0)
+        info(f"Handling plan '{plan[i]}'")
+        if len(plan[i]) == 2:
+            posname0 = plan[i][0]
+            posname1 = plan[i][1]
+            info("Handling %s - %s" % (posname0, posname1))
+            data = epss[posname0] - epss[posname1]
+            Var = vars[posname0] + vars[posname1]
+            itime = np.mean([times[posname0], times[posname1]], axis=0)
 
-        p = Pool()
-        solutions = p.map(background_subtract_helper, list(range(len(bs.ssl))))
-        p.close()
+            p = Pool()
+            solutions = p.map(background_subtract_helper, list(range(len(bs.ssl))))
+            p.close()
 
-        write_outputs(solutions, itime, header, maskname, band, plan[i], options, target=target)
+            write_outputs(solutions, itime, header, maskname, band, plan[i], options, target=target)
+        elif len(plan[i]) == 1:
+            posname0 = plan[i][0]
+            info("Handling %s" % (posname0))
+            data = epss[posname0]
+            Var = vars[posname0]
+            itime = np.mean([times[posname0]], axis=0)
 
+            p = Pool()
+            solutions = p.map(background_subtract_helper, list(range(len(bs.ssl))))
+            p.close()
+
+            write_outputs(solutions, itime, header, maskname, band, plan[i], options, target=target)
 
 def write_outputs(solutions, itime, header, maskname, band_name, plan, options, target):
     sky_sub_out = np.zeros((2048, 2048), dtype=np.float)
     sky_model_out = np.zeros((2048, 2048), dtype=np.float)
 
     p0 = plan[0].replace("'", "p")
-    p1 = plan[1].replace("'", "p")
-    suffix = "%s-%s" % (p0,p1)
+    suffix = p0
+    if len(plan) > 1:
+        p1 = plan[1].replace("'", "p")
+        suffix = "%s-%s" % (p0,p1)
     xroi = slice(0,2048)
 
     for sol in solutions:
