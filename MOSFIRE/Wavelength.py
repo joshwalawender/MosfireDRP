@@ -599,7 +599,8 @@ def fit_lambda_interactively(maskname, band, wavenames, options, neon=None,
     try: 
         solutions = np.load(fn)
         info( "Solutions loaded from: "+str(fn))
-    except IOError: solutions = None
+    except IOError:
+        solutions = None
 
     lamout = np.zeros(shape=(2048, 2048), dtype=np.float32)
 
@@ -1626,6 +1627,7 @@ class InteractiveSolution:
     STD = None
 
     first_time = True
+    min_number_of_lines_to_fit = 15
 
     def __init__(self, fig, mfits, linelist, options, slitno, outfilename, 
             solutions=None, noninteractive=False, starting_pos=None):
@@ -1958,7 +1960,7 @@ class InteractiveSolution:
             # prepare a sigma tolerance (reject values of deltas > tolerance * sigma)
             tolerance = 3
             # if the std error is > 0.10, iteratively reject lines
-            while error>0.10:
+            while error>0.10 and len(xs) > 10:
 #                 info("#####################################################")
                 warning("Large error detected. Iterating with sigma clipping")
                 warning("Current error is "+str(error))
@@ -1976,6 +1978,8 @@ class InteractiveSolution:
                 error = np.std(deltas[np.isfinite(deltas)])
                 if error<=0.10:
                     info("The error is now {}.  The error is acceptable, continuing...".format(error))
+                elif len(xs) < min_number_of_lines_to_fit:
+                    info("The error is now {}.  The error is high, but only a few lines are left for the fit, continuing...".format(error))
                 else:
                     info("The error is now {}".format(error))
 #                 info("#####################################################")
@@ -2034,6 +2038,12 @@ class InteractiveSolution:
 
         if kp in actions:
             actions[kp](x, y)
+
+    def __del__(self):
+        if self.fig is not None:
+            info("Closing figure")
+            self.fig.canvas.mpl_disconnect(self.cid)
+            pl.close(self.fig)
 
 def fit_wavelength_solution(data, parguess, lines, options, 
         slitno, search_num=145, fixed=False):
