@@ -12,6 +12,7 @@ import numpy as np
 
 import ccdproc
 from astropy.table import Table, Column
+from astropy.io import fits
 
 ##-------------------------------------------------------------------------
 ## Parse Command Line Arguments
@@ -180,6 +181,20 @@ def main():
                         }
                 with open(path.join(filterpath, 'mask.txt'), 'w') as mask_txt:
                     yaml.dump(info, mask_txt)
+
+            # Hack headers for long2pos
+            #   Headers have the wide position with FRAMEID as A which is
+            #   identical to the first narrow position.
+            #   For each FITS file with zero offset, change FRAMEID to 'C'.
+            if maskname[:8] == 'long2pos':
+                for entry in mask_files[mask_files['yoffset'] == 0]:
+                    filename = entry['file']
+                    file = path.join(filepath, filename)
+                    hdul = fits.open(file, mode='update')
+                    if hdul[0].header['FRAMEID'] == 'A':
+                        print(f'Correcting header for {filename}')
+                        hdul[0].header.set('FRAMEID', 'C')
+                        hdul.flush()
 
 
 if __name__ == '__main__':
