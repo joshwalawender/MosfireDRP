@@ -14,7 +14,7 @@ def nfiles(list_file):
 with open('mask.txt', 'r') as mask_txt:
     info = yaml.load(mask_txt)
 
-nf = True
+nf = False
 neon = False
 argon = False
 maskname = info['maskname']
