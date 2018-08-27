@@ -58,22 +58,22 @@ noninteractiveflag = {str(nf):5s} # Set this flag to autofit wavelength
 # Imports
 import matplotlib           # Force TkAgg backend for interactivity. This is
 matplotlib.use('TkAgg')     # critical to bypass a bug in the MacOSX backend.
-from MOSFIRE import Options, Flats, Wavelength, Background, Rectify, Extract
+from MOSFIRE import Flats, Wavelength, Background, Rectify, Extract
+from MOSFIRE.Options import wavelength as wavops
+from MOSFIRE.Options import flat as flatops
 
-Flats.handle_flats('Flat.txt', maskname, band, Options.flat)
+Flats.handle_flats('Flat.txt', maskname, band, flatops)
 
-Wavelength.imcombine(wavfiles, maskname, band, Options.wavelength)
-Wavelength.fit_lambda_interactively(maskname, band, wavfiles, Options.wavelength,
+Wavelength.imcombine(wavfiles, maskname, band, wavops)
+Wavelength.fit_lambda_interactively(maskname, band, wavfiles, wavops,
            neon={neon}, argon={argon}, noninteractive=noninteractiveflag)
-Wavelength.fit_lambda(maskname, band, wavfiles, wavfiles, Options.wavelength)
-Wavelength.apply_lambda_simple(maskname, band, wavfiles, Options.wavelength,
-           smooth={not longexp})
+Wavelength.fit_lambda(maskname, band, wavfiles, wavfiles, wavops)
+Wavelength.apply_lambda_simple(maskname, band, wavfiles, wavops, smooth={not longexp})
 
-Background.handle_background(obsfiles, Wavelength_file, maskname, band,
-           Options.wavelength)
+Background.handle_background(obsfiles, Wavelength_file, maskname, band, wavops)
 
 Rectify.handle_rectification(maskname, redfiles, Wavelength_file, band,
-        obsfiles, Options.wavelength)
+        obsfiles, wavops)
 
 Extract.extract_spectra(maskname, band, width=10,
         interactive=(not noninteractiveflag))
