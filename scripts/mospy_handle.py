@@ -1,249 +1,201 @@
-#!/usr/local/bin/python
+#!/usr/env/python
 
-'''
-MOSFIRE 'handle' command:
-
-(c) npk - Dec 2013
-'''
-import MOSFIRE.IO as IO
-import os
-import numpy as np
+## Import General Tools
 import sys
+from os import path
+import argparse
 import glob
+import re
+import os
+import yaml
+import numpy as np
 
-from MOSFIRE.MosfireDrpLog import debug, info, warning, error
+import ccdproc
+from astropy.table import Table, Column
+from astropy.io import fits
 
-if len(sys.argv) < 3:
-    print('''Usage: mospy handle [target]''')
-    sys.exit()
-
-## Output the file list to a text file for later examination
-if os.path.exists('filelist.txt'):
-    debug('Removing old filelist.txt')
-    os.remove('filelist.txt')
-fl = open('filelist.txt', 'w')
-
-
-files = []
-for i in range(1, len(sys.argv)):
-    files.extend(glob.iglob(os.path.abspath(sys.argv[i])))
-
-files = [file for file in files if os.path.splitext(file)[1] != '.original']
-
-masks = {}
-
-
-info('Examining {} files'.format(len(files)))
-for fname in files:
-
-    try:
-        header = IO.readheader(fname)
-    except IOError:#, err:
-        fl.write("Couldn't IO %s\n" % fname)
-        continue
-    except:
-        fl.write("%s is unreadable\n" % fname)
-        continue
-
-    lamps = ""
-    try:
-        if header["pwstata7"] == 1:
-            lamps += header["pwloca7"][0:2]
-        if header["pwstata8"] == 1:
-            lamps += header["pwloca8"][0:2]
-    except KeyError:
-        lamps = "???"
-        
-    header['lamps'] = lamps
-
-    try:
-        if header["aborted"]:
-            header['object' ] = 'ABORTED'
-    except:
-        fl.write("Missing header file in: %s\n" % fname)
-
-    try:
-        fl.write("%(datafile)12s %(object)35s %(truitime)6.1fs %(maskname)35s %(lamps)3s %(filter)4s %(mgtname)7s\n" % (header))
-    except:
-        try:
-            fl.write("%(datafile)12s %(object)25s %(truitime)6.1fs %(lamps)3s %(filter)6s %(mgtname)7s\n" % (header))
-        except:
-            fl.write("%s Skipped\n" % fname)
-            continue
+##-------------------------------------------------------------------------
+## Parse Command Line Arguments
+##-------------------------------------------------------------------------
+## create a parser object for understanding command-line arguments
+p = argparse.ArgumentParser(description='''
+''')
+p.add_argument('path', 
+               help="Path to files to handle")
+args = p.parse_args()
+filepath = path.abspath(args.path)
+# files = [f for f in args.files if path.splitext(f)[1] != '.original']
 
 
-    datafile = header['datafile'] + '.fits'
-    maskname = str(header['maskname'])
-    target = str(header['targname'])
-    filter = header['filter']
-    yr,mn,dy = IO.fname_to_date_tuple(datafile)
-    date = str(yr)+mn+str(dy)
-    object = header['object']
-    frameid = header['FRAMEID'].strip()
+##-------------------------------------------------------------------------
+## Main Program
+##-------------------------------------------------------------------------
+def main():
+    keywords = ['pwstata7', 'pwstata8', 'pwloca7', 'pwloca8', 'aborted',
+                'datafile', 'object', 'truitime', 'maskname', 'mgtname',
+                'filter', 'flatspec', 'xoffset', 'yoffset', 'targname',
+                'frameid',
+                ]
+    ifc = ccdproc.ImageFileCollection(filepath, keywords=keywords)
+    files = ifc.summary
+    photmasks = ['long2pos', 'long2pos_specphot', 'long3pos', 'long3pos_specphot']
+    sortnames = Column(['']*len(files), name='sortname', dtype='a90')
+    for i,entry in enumerate(files):
+        # Remove "(align)" from mask names: treat them the same as normal masks
+        if re.search('\s\(align\)', entry['maskname']):
+            files[i]['maskname'] = files[i]['maskname'].replace(' (align)', '')
 
-    itime = header['truitime']
-    grating_turret = header['mgtname']
-
-    if object.find("MIRA") == -1: 
-        mira = False
-    else: 
-        mira = True
-
-    if header['MGTNAME'] is not 'mirror':
-        mira = False
-        
-    if maskname.find(" (align)") == -1:
-        align = False
-    else:
-        maskname = maskname.replace(" (align)", "")
-        align = True
-
-    if maskname.find('LONGSLIT') != -1:
-#         print("longslit file")
-        align = False
-
-    if maskname.find('long2pos') != -1:
-        if grating_turret != 'mirror':
-            align = False
-
-    empty_files = {'Align': [], 'Ne': [], 'Ar': [], 'Flat': [], 'FlatThermal': [],
-            'Dark': [], 'Aborted': [], 'Image': [], 'MIRA': [], 'Unknown': []}
-
-    if maskname not in masks:
-        masks[maskname] = {date: {filter: empty_files}}
-
-    if date not in masks[maskname]:
-        masks[maskname][date] = {filter: empty_files}
-
-    if filter not in masks[maskname][date]:
-        masks[maskname][date][filter] = empty_files
-
-    # convert numbers such as 1.0 to 1, but leaves 1.5 as 1.5
-    # - added to match AutoDriver.py code
-    offset_hdr = float(header['YOFFSET'])
-    if offset_hdr % 1 == 0:
-        offsetvalue = int(offset_hdr)
-    else:
-        offsetvalue = offset_hdr
-
-    offset = 'Offset_' + str(offsetvalue)
-    if (maskname.find('long2pos') != -1 and align is False) or maskname.find('LONGSLIT') != -1:
-        # if the target name contains a /, replace it with _
-        target_name = target.replace("/","_")
-        # if the target name contains a space, remove it
-        target_name = target_name.replace(" ","")
-        # add a posC and posA to the offset names
-        position = ''
-        if header['XOFFSET']>0:
-            position = 'PosC'
-        if header['XOFFSET']<0:
-            position = 'PosA'
-        offset = offset+'_'+str(target_name)
-        if position is not '':
-            offset = offset+'_'+position
-
-    
-    if mira:
-        masks[maskname][date][filter]['MIRA'].append(fname)
-    elif align:
-        masks[maskname][date][filter]['Align'].append(fname)
-    elif 'Ne' in header['lamps']:
-        masks[maskname][date][filter]['Ne'].append(fname)
-    elif 'Ar' in header['lamps']:
-        masks[maskname][date][filter]['Ar'].append(fname)
-    elif header['ABORTED']:
-        masks[maskname][date][filter]['Aborted'].append(fname)
-    elif header['FILTER'] == 'Dark':
-        masks[maskname][date][filter]['Dark'].append(fname)
-    elif header['FLATSPEC'] == 1:
-        masks[maskname][date][filter]['Flat'].append(fname)
-    elif object.find("Flat:") != -1 and ( object.find("lamps off") != -1 or object.find("Flat:Off")) != -1 :
-        masks[maskname][date][filter]['FlatThermal'].append(fname)
-    elif header['mgtname'] == 'mirror':
-        masks[maskname][date][filter]['Image'].append(fname)
-    elif offset != 0:
-#         print "offset is now:"+str(offset)
-        if frameid in ["A", "B", "A'", "B'","D","C", "E"]:
-            if offset in masks[maskname][date][filter]: 
-                masks[maskname][date][filter][offset].append((fname, itime))
-#                 print("adding file to existing offset file")
-            else: 
-                masks[maskname][date][filter][offset] = [(fname, itime)]
-#                 print("creating new offset file")
+        # Separate targets for photometric masks such as long2pos and LONGSLIT
+        maskname = entry['maskname']
+        targname = entry['targname'].replace(' ', '_')
+        xoffset = float(entry['xoffset'])
+        if (maskname in photmasks) or (re.search('LONGSLIT', maskname)):
+            sortnames[i] = f"{maskname}_{targname}_{xoffset:.1f}"
         else:
-            fl.write('{} has unexpected FRAMEID: {}\n'.format(fname, frameid))
-    else:
-        masks[maskname][date][filter]['Unknown'].append(fname)
+            sortnames[i] = maskname
+    files.add_column(sortnames)
 
-
-
-##### Now handle mask dictionary
-
-def descriptive_blurb():
-    import getpass, time
-
-    uid = getpass.getuser()
-    date = time.asctime()
-
-    return "# Created by '%s' on %s\n" % (uid, date)
-
-
-# Write out the list of files in filepath
-#   list = ['/path/to/mYYmmDD_####.fits' ...]
-#   filepath is absolute path to the file name to write to
-#
-#   Result, is a file called filepath is written with
-# fits files in the list.
-def handle_file_list(output_file, files):
-    '''Write a list of paths to MOSFIRE file to output_file.'''
-
-    if os.path.isfile(output_file):
-        print("%s: already exists, skipping" % output_file )
-#         pass
-
-    if len(files) > 0:
-        with open(output_file, "w") as f:
-            f = open(output_file, "w")
-            f.write(descriptive_blurb())
-
-            picker = lambda x: x
-            if len(files[0]) == 2: picker = lambda x: x[0]
-
-            # Identify unique path to files:
-            paths = [os.path.dirname(picker(file)) for file in files]
-            paths = list(set(paths))
-
-            if len(paths) == 1:
-                path_to_all = paths[0]
-                converter = os.path.basename
-                f.write("%s # Abs. path to files [optional]\n" % path_to_all)
-            else:
-                converter = lambda x: x
-
-            info('Writing {} files to {}'.format(len(files), output_file))
-            for path in files:
-                if len(path) == 2:
-                    to_write = "%s # %s s\n" % (converter(path[0]), path[1])
+    filters = set(files['filter'])
+    mask_table = files.group_by('sortname')
+    for group in mask_table.groups:
+        maskname = group[0]['sortname']
+        print(f'Sorting files for: {maskname}')
+        for filter in filters:
+            mask_files = group[(group['filter'] == filter)
+                               & (group['pwstata7'] == 0)
+                               & (group['pwstata8'] == 0)
+                               & (group['flatspec'] == 0)
+                               & (group['aborted'] == False)
+                               & (group['mgtname'] != 'mirror')
+                               ]
+            arc7_files = group[(group['filter'] == filter)
+                               & (group['pwstata7'] == 1)
+                               & (group['pwstata8'] == 0)
+                               & (group['flatspec'] == 0)
+                               & (group['aborted'] == False)
+                               & (group['mgtname'] != 'mirror')
+                               ]
+            arc8_files = group[(group['filter'] == filter)
+                               & (group['pwstata7'] == 0)
+                               & (group['pwstata8'] == 1)
+                               & (group['flatspec'] == 0)
+                               & (group['aborted'] == False)
+                               & (group['mgtname'] != 'mirror')
+                               ]
+            flat_files = group[(group['filter'] == filter)
+                               & (group['pwstata7'] == 0)
+                               & (group['pwstata8'] == 0)
+                               & (group['flatspec'] == 1)
+                               & (group['aborted'] == False)
+                               & (group['mgtname'] != 'mirror')
+                               ]
+            # find lamps off files by parsing OBJECT header keyword
+            thermal_flats = mask_files.copy()
+            remove_from_thermals = []
+            remove_from_mask = []
+            for i,entry in enumerate(thermal_flats):
+                if re.search('Flat:', entry['object']):
+                    remove_from_mask.append(i)
                 else:
-                    to_write = "%s\n" % converter(path)
-                f.write("%s" % to_write)
+                    remove_from_thermals.append(i)
+            thermal_flats.remove_rows(remove_from_thermals)
+            mask_files.remove_rows(remove_from_mask)
+
+            filterpath = path.join(maskname, filter)
+            # Write output file for Ne
+            if len(arc7_files) > 0:
+                print(f'  Found {len(arc7_files)} {filter} Ne files')
+                if not path.exists(maskname):
+                    os.mkdir(maskname)
+                if not path.exists(filterpath):
+                    os.mkdir(filterpath)
+                with open(path.join(filterpath, 'Ne.txt'), 'w') as Ne_txt:
+                    Ne_txt.write(f"{filepath} # Abs. path to files [optional]\n")
+                    for entry in arc7_files:
+                        Ne_txt.write(f"{entry['file']} # \n")
+            # Write output file for Ar
+            if len(arc8_files) > 0:
+                print(f'  Found {len(arc8_files)} {filter} Ar files')
+                if not path.exists(maskname):
+                    os.mkdir(maskname)
+                if not path.exists(filterpath):
+                    os.mkdir(filterpath)
+                with open(path.join(filterpath, 'Ar.txt'), 'w') as Ar_txt:
+                    Ar_txt.write(f"{filepath} # Abs. path to files [optional]\n")
+                    for entry in arc8_files:
+                        Ar_txt.write(f"{entry['file']} # \n")
+            # Write output file for Flat
+            if len(flat_files) > 0:
+                print(f'  Found {len(flat_files)} {filter} Flat files')
+                if not path.exists(maskname):
+                    os.mkdir(maskname)
+                if not path.exists(filterpath):
+                    os.mkdir(filterpath)
+                with open(path.join(filterpath, 'Flat.txt'), 'w') as Flat_txt:
+                    Flat_txt.write(f"{filepath} # Abs. path to files [optional]\n")
+                    for entry in flat_files:
+                        Flat_txt.write(f"{entry['file']} # \n")
+            # Write output file for FlatThermal
+            if len(thermal_flats) > 0:
+                print(f'  Found {len(thermal_flats)} {filter} ThermalFlat files')
+                if not path.exists(maskname):
+                    os.mkdir(maskname)
+                if not path.exists(filterpath):
+                    os.mkdir(filterpath)
+                with open(path.join(filterpath, 'FlatThermal.txt'), 'w') as FlatThermal_txt:
+                    FlatThermal_txt.write(f"{filepath} # Abs. path to files [optional]\n")
+                    for entry in thermal_flats:
+                        FlatThermal_txt.write(f"{entry['file']} # \n")
+
+            # Sort mask files in to offsets
+            if len(mask_files) > 0:
+                offset_table = mask_files.group_by('yoffset')
+                # Write mask.txt file with mask info
+                if not path.exists(maskname):
+                    os.mkdir(maskname)
+                if not path.exists(filterpath):
+                    os.mkdir(filterpath)
+                offsets = []
+                for group in offset_table.groups:
+                    offset = group[0]['yoffset']
+                    offsets.append(offset)
+                    print(f'  Found {len(group)} {filter} Offset {offset} files')
+                    with open(path.join(filterpath, f'Offset_{offset:.1f}.txt'), 'w') as offset_txt:
+                        offset_txt.write(f"{filepath} # Abs. path to files [optional]\n")
+                        for entry in group:
+                            offset_txt.write(f"{entry['file']} # \n")
+                # write out YAML file with dictionary of information
+                mean_itime = np.mean(mask_files['truitime'])
+                stddev_itime = np.std(mask_files['truitime'])
+                info = {'maskname': str(maskname),
+                        'exptime': float(mean_itime),
+                        'exptime_stddev': float(stddev_itime),
+                        'filter': str(filter),
+                        'offsets': [f"{o:.1f}" for o in offsets],
+                        'offset_files': [f'Offset_{o:.1f}.txt' for o in offsets],
+                        'mask_files': [str(f) for f in mask_files['file']],
+                        'Ne_files': [str(f) for f in arc7_files['file']],
+                        'Ar_files': [str(f) for f in arc8_files['file']],
+                        'flat_files': [str(f) for f in flat_files['file']],
+                        'thermal_flats': [str(f) for f in thermal_flats['file']],
+                        }
+                with open(path.join(filterpath, 'mask.txt'), 'w') as mask_txt:
+                    yaml.dump(info, mask_txt)
+
+            # Hack headers for long2pos
+            #   Headers have the wide position with FRAMEID as A which is
+            #   identical to the first narrow position.
+            #   For each FITS file with zero offset, change FRAMEID to 'C'.
+            if maskname[:8] == 'long2pos':
+                for entry in mask_files[mask_files['yoffset'] == 0]:
+                    filename = entry['file']
+                    file = path.join(filepath, filename)
+                    hdul = fits.open(file, mode='update')
+                    if hdul[0].header['FRAMEID'] == 'A':
+                        print(f'Correcting header for {filename}')
+                        hdul[0].header.set('FRAMEID', 'C')
+                        hdul.flush()
 
 
-def handle_date_and_filter(mask, date, filter, mask_info):
-
-    path = os.path.join(mask,date,filter)
-    try:
-        os.makedirs(path)
-    except OSError:
-        pass
-
-    for type in list(mask_info.keys()):
-        handle_file_list(os.path.join(path, type + ".txt"), mask_info[type])
-
-
-for mask in list(masks.keys()):
-    for date in list(masks[mask].keys()):
-        for filter in list(masks[mask][date].keys()):
-            handle_date_and_filter(mask, date, filter, masks[mask][date][filter])
-
-
+if __name__ == '__main__':
+    main()
