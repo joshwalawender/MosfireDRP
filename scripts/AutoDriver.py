@@ -81,7 +81,7 @@ Extract.extract_spectra(maskname, band, width=10,
 
 # If you have questions, please submit a ticket on the github issue page:
 # https://github.com/Keck-DataReductionPipelines/MosfireDRP/issues
-    '''
+'''
 
     with open('Driver.py', 'w') as driver:
         driver.write(template)
