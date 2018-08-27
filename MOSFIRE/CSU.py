@@ -350,6 +350,23 @@ class Barset(object):
         debug(str(slits))
         return self.csu_slit_to_pixel(np.median(slits))
 
+    def scislit_is_uniform(self, scislit):
+        '''Determine if a science slit is a uniform width.  This should be True
+        for most science slits, but slits in the long2pos mask, for example,
+        will be non-uniform.
+        
+        Returns a tuple, the first element of which is a boolean indicating
+        whether the slit is uniform.  The second element is a numpy array with
+        the slit numbers of the slits which have a width less than or equal to
+        the median of all the widths.  In a long2pos style slit, this will be
+        the narrow slits.
+        '''
+        slits = np.array(self.scislit_to_csuslit(scislit))
+        widths = [self.csu_slit_width(i) for i in slits]
+        uniform = np.all(np.isclose(widths, np.median(widths)))
+        narrow_slits = slits[widths <= np.median(widths)]
+        return uniform, narrow_slits
+
     def set_pos_pix(self):
         # _kfp is keck focal plane
         centerx = 137.400

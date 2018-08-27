@@ -1690,7 +1690,13 @@ class InteractiveSolution:
         info('CSU slits {} acting as slit number {}'.format(str(csuslits), str(csuslit)))
         self.linelist = self.linelist0
         if self.starting_pos is None:
-            self.extract_pos = self.bs.science_slit_to_pixel(self.slitno)
+            uniform, ns = self.bs.scislit_is_uniform(self.slitno)
+            if uniform is True:
+                self.extract_pos = self.bs.science_slit_to_pixel(self.slitno)
+            else:
+                # pick a narrow slit near center of science slit
+                narrowslit = ns[int(len(ns)/2)]
+                self.extract_pos = self.bs.csu_slit_to_pixel(narrowslit)
         else:
             info("LONGSLIT mode: forced longslit center line")
             '''This is used in longslits to handle a forced start position'''
