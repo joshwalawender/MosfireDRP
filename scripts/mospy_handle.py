@@ -14,23 +14,11 @@ import ccdproc
 from astropy.table import Table, Column
 from astropy.io import fits
 
-##-------------------------------------------------------------------------
-## Parse Command Line Arguments
-##-------------------------------------------------------------------------
-## create a parser object for understanding command-line arguments
-p = argparse.ArgumentParser(description='''
-''')
-p.add_argument('path', 
-               help="Path to files to handle")
-args = p.parse_args()
-filepath = path.abspath(args.path)
-# files = [f for f in args.files if path.splitext(f)[1] != '.original']
-
 
 ##-------------------------------------------------------------------------
 ## Main Program
 ##-------------------------------------------------------------------------
-def main():
+def main(filepath):
     keywords = ['pwstata7', 'pwstata8', 'pwloca7', 'pwloca8', 'aborted',
                 'datafile', 'object', 'truitime', 'maskname', 'mgtname',
                 'filter', 'flatspec', 'xoffset', 'yoffset', 'targname',
@@ -198,4 +186,16 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    ##-------------------------------------------------------------------------
+    ## Parse Command Line Arguments
+    ##-------------------------------------------------------------------------
+    ## create a parser object for understanding command-line arguments
+    p = argparse.ArgumentParser(description='''
+    ''')
+    p.add_argument('command', help="Command executed (i.e. handle)")
+    p.add_argument('path', help="Path to files to handle")
+    args = p.parse_args()
+    filepath = path.abspath(args.path)
+    # files = [f for f in args.files if path.splitext(f)[1] != '.original']
+
+    main(filepath)
