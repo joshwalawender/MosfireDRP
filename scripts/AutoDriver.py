@@ -44,8 +44,7 @@ def main(nf=False):
     wavename = Wavelength.filelist_to_wavename(IO.list_file_to_strings(wavfiles), band, maskname, '')
     wavefile = f"lambda_solution_{wavename}"
 
-    template = f'''
-maskname = '{maskname}'
+    template = f'''maskname = '{maskname}'
 band = '{band}'
 obsfiles = {obsfiles}
 wavfiles = {wavfiles}
