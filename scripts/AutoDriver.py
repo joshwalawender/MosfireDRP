@@ -1,5 +1,6 @@
 import os
 import yaml
+import argparse
 
 from MOSFIRE import IO, Wavelength
 
@@ -10,41 +11,40 @@ def nfiles(list_file):
         contents = IO.list_file_to_strings(list_file)
         return len(contents)
 
-# Main Program
-with open('mask.txt', 'r') as mask_txt:
-    info = yaml.load(mask_txt)
+def main(nf=False):
+    with open('mask.txt', 'r') as mask_txt:
+        info = yaml.load(mask_txt)
 
-nf = False
-neon = False
-argon = False
-maskname = info['maskname']
-band = info['filter']
-obsfiles = info['offset_files']
+    neon = False
+    argon = False
+    maskname = info['maskname']
+    band = info['filter']
+    obsfiles = info['offset_files']
 
-longexp_threshold = {'Y': 170, 'J': 110, 'H': 110, 'K': 1000}
+    longexp_threshold = {'Y': 170, 'J': 110, 'H': 110, 'K': 1000}
 
-longexp = info['exptime'] >= longexp_threshold[band]
+    longexp = info['exptime'] >= longexp_threshold[band]
 
-if longexp is True:
-    wavfiles = obsfiles
-else:
-    wavfiles = []
-    # use only Ne if available, otherwise use Ar
-    if nfiles('Ne.txt') > 0:
-        neon = True
-        wavfiles.append('Ne.txt')
-    elif nfiles('Ar.txt') > 0:
-        argon = True
-        wavfiles.append('Ar.txt')
-    # if neither Ne nor Ar is available, we must use the skylines
-    if len(wavfiles) == 0:
+    if longexp is True:
         wavfiles = obsfiles
+    else:
+        wavfiles = []
+        # use only Ne if available, otherwise use Ar
+        if nfiles('Ne.txt') > 0:
+            neon = True
+            wavfiles.append('Ne.txt')
+        elif nfiles('Ar.txt') > 0:
+            argon = True
+            wavfiles.append('Ar.txt')
+        # if neither Ne nor Ar is available, we must use the skylines
+        if len(wavfiles) == 0:
+            wavfiles = obsfiles
 
-redfiles = [f"eps_{file}.fits" for file in obsfiles]
-wavename = Wavelength.filelist_to_wavename(IO.list_file_to_strings(wavfiles), band, maskname, '')
-wavefile = f"lambda_solution_{wavename}"
+    redfiles = [f"eps_{file}.fits" for file in obsfiles]
+    wavename = Wavelength.filelist_to_wavename(IO.list_file_to_strings(wavfiles), band, maskname, '')
+    wavefile = f"lambda_solution_{wavename}"
 
-template = f'''
+    template = f'''
 maskname = '{maskname}'
 band = '{band}'
 obsfiles = {obsfiles}
@@ -81,7 +81,23 @@ Extract.extract_spectra(maskname, band, width=10,
 
 # If you have questions, please submit a ticket on the github issue page:
 # https://github.com/Keck-DataReductionPipelines/MosfireDRP/issues
-'''
+    '''
 
-with open('Driver.py', 'w') as driver:
-    driver.write(template)
+    with open('Driver.py', 'w') as driver:
+        driver.write(template)
+
+if __name__ == '__main__':
+    ##-------------------------------------------------------------------------
+    ## Parse Command Line Arguments
+    ##-------------------------------------------------------------------------
+    ## create a parser object for understanding command-line arguments
+    p = argparse.ArgumentParser(description='''
+    ''')
+    p.add_argument('command', help="Command executed (i.e. handle)")
+    ## add flags
+    p.add_argument("-n", "--ni", dest="noninteractive",
+        default=False, action="store_true",
+        help="Run in non-interactive mode.")
+    args = p.parse_args()
+
+    main(args.noninteractive)
