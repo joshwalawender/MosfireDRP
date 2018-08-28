@@ -62,10 +62,10 @@ def handle_rectification(maskname, in_files, wavename, band_pass, files, options
     lambdas = IO.readfits(wavename, options)
 
     if np.any(lambdas[1].data < 0) or np.any(lambdas[1].data > 29000):
-        info("***********WARNING ***********")
-        info("The file {0} may not be a wavelength file.".format(wavename))
-        info("Check before proceeding.")
-        info("***********WARNING ***********")
+        warning("***********WARNING ***********")
+        warning("The file {0} may not be a wavelength file.".format(wavename))
+        warning("Check before proceeding.")
+        warning("***********WARNING ***********")
 
     edges, meta = IO.load_edges(maskname, band, options)
     shifts = []
@@ -307,7 +307,7 @@ def handle_rectification(maskname, in_files, wavename, band_pass, files, options
         lossy_compress=False)
 
 
-def r_interpol(ls, ss, lfid, tops, top, shift_pix=0, pad=[0,0], fill_value=0.0):
+def r_interpol(ls, ss, lfid, tops, top, shift_pix=0, pad=[0,0], fill_value=0.):
     '''
     Interpolate the data ss(ls, fs) onto a fiducial wavelength vector.
     ls[n_spatial, n_lam] - wavelength array
