@@ -392,11 +392,10 @@ def handle_rectification_helper(edgeno):
     epss = []
     ivss = []
     itss = []
-    if len(shifts) is 1: sign = 1
-    else: sign = -1
-    for shift in shifts:
+    for i,shift in enumerate(shifts):
         output = r_interpol(ll, eps, fidl, tops, top, shift_pix=shift/0.18,
             pad=[mnshift, mxshift], fill_value = np.nan)
+        sign = -((i % 2)*2-1) # This is -1 when i is odd, +1 when i is even
         epss.append(sign * output)
 
         ivar = 1/vv
@@ -410,7 +409,6 @@ def handle_rectification_helper(edgeno):
             pad=[mnshift, mxshift], fill_value=np.nan) 
         itss.append(output)
 
-        sign *= -1
     # the "mean of empty slice" warning are generated at the top and bottom edges of the array
     # where there is basically no data due to the shifts between a and b positions
     # we could pad a little bit less, or accept the fact that the slits have a couple of rows of
