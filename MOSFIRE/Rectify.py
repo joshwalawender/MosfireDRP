@@ -19,14 +19,14 @@ from MOSFIRE import Background, CSU, Fit, IO, Filters, Detector, Wavelength
 from MOSFIRE.MosfireDrpLog import debug, info, warning, error
 
 
-def handle_rectification(maskname, in_files, wavename, band_pass, files, options,
-        commissioning_shift=3.0, target='default', plan=None):
+def handle_rectification(maskname, in_files, wavename, band_pass, files,
+        options, commissioning_shift=3.0, target='default', plan=None):
     '''Handle slit rectification and coaddition.
 
     Args:
         maskname: The mask name string
-        in_files: List of stacked spectra in electron per second. Will look
-            like ['electrons_Offset_1.5.txt.fits', 'electrons_Offset_-1.5.txt.fits']
+        in_files: List of stacked spectra in electrons/second. Will look like
+            ['electrons_Offset_1.5.txt.fits', 'electrons_Offset_-1.5.txt.fits']
         wavename: path (relative or full) to the wavelength stack file, string
         band_pass: Band pass name, string
         barset_file: Path to a mosfire fits file containing the full set of
@@ -218,13 +218,11 @@ def handle_rectification(maskname, in_files, wavename, band_pass, files, options
         header["cd2_1"] = 0
         header["cd2_2"] = 1
 
-
         S = output.shape
 
         img = solution["eps_img"]
         std = solution["sd_img"]
         tms = solution["itime_img"]
-
 
         for i_solution in range(1,len(all_solutions)):
             info("Combining solution %i" %i_solution)
@@ -244,22 +242,22 @@ def handle_rectification(maskname, in_files, wavename, band_pass, files, options
 
         header['bunit'] = ('electron/second', 'electron power')
         IO.writefits(img, maskname,
-            "{0}_{1}_{2}_eps.fits".format(outname, band, target_name), options,
+            "{outname}_{band}_{target_name}_eps.fits", options,
             overwrite=True, header=header, lossy_compress=False)
 
         header['bunit'] = ('electron/second', 'sigma/itime')
         IO.writefits(std/tms, maskname,
-            "{0}_{1}_{2}_sig.fits".format(outname, band, target_name), options,
+            "{outname}_{band}_{target_name}_sig.fits", options,
             overwrite=True, header=header, lossy_compress=False)
 
         header['bunit'] = ('second', 'exposure time')
         IO.writefits(tms, maskname,
-            "{0}_{1}_{2}_itime.fits".format(outname, band, target_name), options,
+            "{outname}_{band}_{target_name}_itime.fits", options,
             overwrite=True, header=header, lossy_compress=False)
 
         header['bunit'] = ('', 'SNR')
         IO.writefits(img*tms/std, maskname,
-            "{0}_{1}_{2}_snrs.fits".format(outname, band, target_name), options,
+            "{outname}_{band}_{target_name}_snrs.fits", options,
             overwrite=True, header=header, lossy_compress=False)
 
     header = EPS[0].copy()
@@ -285,7 +283,7 @@ def handle_rectification(maskname, in_files, wavename, band_pass, files, options
     header["cd2_2"] = 1
 
     header["bunit"] = "ELECTRONS/SECOND"
-    info("############ Final reduced file: {0}_{1}_eps.fits".format(outname,band))
+    info(f"############ Final reduced file: {outname}_{band}_eps.fits"
     IO.writefits(output, maskname, "{0}_{1}_eps.fits".format(outname,
         band), options, overwrite=True, header=header,
         lossy_compress=False)
@@ -355,8 +353,8 @@ def r_interpol(ls, ss, lfid, tops, top, shift_pix=0, pad=[0,0], fill_value=0.):
 
 
 def handle_rectification_helper(edgeno):
-    ''' All the rectification happens in this helper function. This helper function
-    is spawned as a separate process in the multiprocessing pool'''
+    ''' All the rectification happens in this helper function. This helper
+    function is spawned as a separate process in the multiprocessing pool'''
 
     global edges, dats, vars, itimes, shifts, lambdas, band, fidl,all_shifts
 
@@ -408,10 +406,10 @@ def handle_rectification_helper(edgeno):
             pad=[mnshift, mxshift], fill_value=np.nan) 
         itss.append(output)
 
-    # the "mean of empty slice" warning are generated at the top and bottom edges of the array
-    # where there is basically no data due to the shifts between a and b positions
-    # we could pad a little bit less, or accept the fact that the slits have a couple of rows of
-    # nans in the results.
+    # the "mean of empty slice" warning are generated at the top and bottom
+    # edges of the array where there is basically no data due to the shifts
+    # between a and b positions we could pad a little bit less, or accept the
+    # fact that the slits have a couple of rows of nans in the results.
     warnings.filterwarnings('ignore','Mean of empty slice')
     it_img = np.nansum(np.array(itss), axis=0)
     eps_img = np.nanmean(epss, axis=0)
