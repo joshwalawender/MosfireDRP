@@ -321,20 +321,20 @@ def r_interpol(ls, ss, lfid, tops, top, shift_pix=0, pad=[0,0], fill_value=0.):
         ok = np.where(ll>1000)[0]
 
         if len(ok) >= 100:
-            f = II.interp1d(ll[ok], sp[ok], bounds_error=False, 
+            f = interp1d(ll[ok], sp[ok], bounds_error=False, 
                 fill_value = fill_value)
             output[i,:] = f(lfid)
 
     # Now rectify in spatial
     vert_shift = tops-top-shift_pix
 
-    f = II.interp1d(ls[10, :], vert_shift, bounds_error=False, 
+    f = interp1d(ls[10, :], vert_shift, bounds_error=False, 
         fill_value = fill_value)
 
     for i in range(output.shape[1]):
         to_shift = f(fidl[i])
         x = np.arange(output.shape[0])
-        y = II.interp1d(x, output[:, i], bounds_error=False,
+        y = interp1d(x, output[:, i], bounds_error=False,
             fill_value=fill_value)
 
         output[:,i] = y(x + to_shift)
