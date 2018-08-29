@@ -1,4 +1,3 @@
-
 import os
 import sys
 import time
@@ -11,15 +10,12 @@ except:
     import pyfits as pf
 
 from multiprocessing import Pool
-import scipy as sp
 import scipy.ndimage
 from scipy import interpolate as II
 import warnings
 
-import pdb
-
 import MOSFIRE
-from MOSFIRE import Background, CSU, Fit, IO, Options, Filters, Detector, Wavelength
+from MOSFIRE import Background, CSU, Fit, IO, Filters, Detector, Wavelength
 from MOSFIRE.MosfireDrpLog import debug, info, warning, error
 
 
