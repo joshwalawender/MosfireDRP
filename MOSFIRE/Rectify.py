@@ -20,7 +20,7 @@ from MOSFIRE import Background, CSU, Fit, IO, Filters, Detector, Wavelength
 from MOSFIRE.MosfireDrpLog import debug, info, warning, error
 
 
-def handle_rectification(maskname, in_files, wavename, band, files,
+def handle_rectification(maskname, in_files, wavename, band_pass, files,
         options, commissioning_shift=3.0, target='default', plan=None):
     '''Handle slit rectification and coaddition.
 
@@ -29,7 +29,7 @@ def handle_rectification(maskname, in_files, wavename, band, files,
         in_files: List of stacked spectra in electrons/second. Will look like
             ['electrons_Offset_1.5.txt.fits', 'electrons_Offset_-1.5.txt.fits']
         wavename: path (relative or full) to the wavelength stack file, string
-        band: Band pass name, string
+        band_pass: Band pass name, string
         barset_file: Path to a mosfire fits file containing the full set of
             FITS extensions for the barset. It can be any file in the list
             of science files.
@@ -48,6 +48,7 @@ def handle_rectification(maskname, in_files, wavename, band, files,
     '''
 
     global edges, dats, vars, itimes, shifts, lambdas, band, fidl, all_shifts
+    band = band_pass
 
     dlambda = Wavelength.grating_results(band)
 
