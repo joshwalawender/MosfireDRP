@@ -11,7 +11,8 @@ except:
 
 from multiprocessing import Pool
 import scipy.ndimage
-from scipy import interpolate as II
+# from scipy import interpolate as II
+from scipy.interpolate import interp1d
 import warnings
 
 import MOSFIRE
