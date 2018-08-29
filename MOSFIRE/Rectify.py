@@ -164,18 +164,15 @@ def handle_rectification(maskname, in_files, wavename, band, files,
     tick = time.time()
     info("-----> Mask took %i. Writing to disk." % (tick-tock))
 
-
     output = np.zeros((1, len(fidl)))
     snrs = np.zeros((1, len(fidl)))
     sdout= np.zeros((1, len(fidl)))
     itout= np.zeros((1, len(fidl)))
 
-
     # the barset [bs] is used for determining object position
     files = IO.list_file_to_strings(files)
     info("Using "+str(files[0])+" for slit configuration.")
     x, x, bs = IO.readmosfits(files[0], options)
-
 
     for i_slit in range(len(solutions)):
         solution = all_solutions[0][i_slit]
@@ -330,7 +327,6 @@ def r_interpol(ls, ss, lfid, tops, top, shift_pix=0, pad=[0,0], fill_value=0.):
             f = II.interp1d(ll[ok], sp[ok], bounds_error=False, 
                 fill_value = fill_value)
             output[i,:] = f(lfid)
-
 
     # Now rectify in spatial
     vert_shift = tops-top-shift_pix
