@@ -156,7 +156,6 @@ def handle_rectification(maskname, in_files, wavename, band, files,
         sols = list(range(len(edges)-1,-1,-1))
 
         shifts = all_shifts[cntr]
-        cntr += 1
         p = Pool()
         solutions = p.map(handle_rectification_helper, sols)
         p.close()
