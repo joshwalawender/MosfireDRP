@@ -53,7 +53,6 @@ def handle_rectification(maskname, in_files, wavename, band_pass, files, options
     global edges, dats, vars, itimes, shifts, lambdas, band, fidl, all_shifts
     band = band_pass
 
-    
     dlambda = Wavelength.grating_results(band)
 
     hpp = Filters.hpp[band]
@@ -72,7 +71,7 @@ def handle_rectification(maskname, in_files, wavename, band_pass, files, options
 
     posnames = []
     postoshift = {}
-    
+
     for file in in_files:
 
         info(":: "+str(file))
@@ -94,7 +93,7 @@ def handle_rectification(maskname, in_files, wavename, band_pass, files, options
         shifts.append(shift)
         posnames.append(II[0]["frameid"])
         postoshift[II[0]['frameid']] = shift
-    
+
         info("Position {0} shift: {1:2.2f} as".format(off, shift))
     # this is to deal with cases in which we want to rectify one single file
     if len(set(posnames)) is 1:
@@ -106,27 +105,31 @@ def handle_rectification(maskname, in_files, wavename, band_pass, files, options
             plans = plan
 
     all_shifts = []
+    print(f"Plans: {plans}")
     for myplan in plans:
+        print(f"MyPlan: {myplan}")
         to_append = []
         for pos in myplan:
+            print(pos, postoshift[pos])
             to_append.append(postoshift[pos])
-
         all_shifts.append(to_append)
 
     # Reverse the elements in all_shifts to deal with an inversion
     all_shifts.reverse()
 
+    print(shifts)
+    print(all_shifts)
+
     theBPM = IO.badpixelmask()
 
     all_solutions = []
-    cntr = 0
 
     if target is 'default':
         outname = maskname
     else:
         outname = target
 
-    for plan in plans:
+    for cntr,plan in enumerate(plans):
         if len(plan) is 1:
             p0 = 'A'
             p1 = 'B'
@@ -179,7 +182,7 @@ def handle_rectification(maskname, in_files, wavename, band_pass, files, options
     files = IO.list_file_to_strings(files)
     info("Using "+str(files[0])+" for slit configuration.")
     x, x, bs = IO.readmosfits(files[0], options)
-    
+
 
     for i_slit in range(len(solutions)):
         solution = all_solutions[0][i_slit]
