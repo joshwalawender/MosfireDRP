@@ -278,25 +278,21 @@ def handle_rectification(maskname, in_files, wavename, band, files,
     header["cd2_2"] = 1
 
     header["bunit"] = "ELECTRONS/SECOND"
-    info(f"############ Final reduced file: {outname}_{band}_eps.fits"
-    IO.writefits(output, maskname, "{0}_{1}_eps.fits".format(outname,
-        band), options, overwrite=True, header=header,
-        lossy_compress=False)
+    info(f"############ Final reduced file: {outname}_{band}_eps.fits")
+    IO.writefits(output, maskname, "{outname}_{band}_eps.fits", options,
+        overwrite=True, header=header, lossy_compress=False)
 
     header["bunit"] = ""
-    IO.writefits(snrs, maskname, "{0}_{1}_snrs.fits".format(outname,
-        band), options, overwrite=True, header=header,
-        lossy_compress=False)
+    IO.writefits(snrs, maskname, "{outname}_{band}_snrs.fits", options,
+        overwrite=True, header=header, lossy_compress=False)
 
     header["bunit"] = "ELECTRONS/SECOND"
-    IO.writefits(sdout/itout, maskname, "{0}_{1}_sig.fits".format(outname,
-        band), options, overwrite=True, header=header,
-        lossy_compress=False)
+    IO.writefits(sdout/itout, maskname, "{outname}_{band}_sig.fits", options,
+        overwrite=True, header=header, lossy_compress=False)
 
     header["bunit"] = "SECOND"
-    IO.writefits(itout, maskname, "{0}_{1}_itime.fits".format(outname,
-        band), options, overwrite=True, header=header,
-        lossy_compress=False)
+    IO.writefits(itout, maskname, "{outname}_{band}_itime.fits", options,
+        overwrite=True, header=header, lossy_compress=False)
 
 
 def r_interpol(ls, ss, lfid, tops, top, shift_pix=0, pad=[0,0], fill_value=0.):
