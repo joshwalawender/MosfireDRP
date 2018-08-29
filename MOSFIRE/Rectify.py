@@ -145,7 +145,6 @@ def handle_rectification(maskname, in_files, wavename, band, files,
         ITIME = IO.read_drpfits(maskname, fname, options)
         ITIME[1] = np.ma.masked_array(ITIME[1], theBPM, fill_value=0)
 
-
         dats = EPS
         vars = VAR
         itimes = ITIME
