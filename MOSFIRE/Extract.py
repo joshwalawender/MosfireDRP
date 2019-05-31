@@ -409,7 +409,7 @@ def iterate_spatial_profile(P, DmS, V, f,\
                                    weights=weights[~weights.mask])
             fit = np.array([fitted_poly(x) for x in xcoord])
             resid = (DmS[i]-f*srow)**2 / V[i]
-            newmask = (resid > sigma)
+            newmask = (resid > sigma**2)
             
             weights.mask = weights.mask | newmask
             srow.mask = srow.mask | newmask
@@ -434,7 +434,8 @@ def iterate_spatial_profile(P, DmS, V, f,\
             info('Row {:3d}: Reset {:d} negative pixels in fit to 0'.format(\
                   i, np.sum((fit<0))))
         fit[(fit < 0)] = 0
-        Pnew[i] = fit
+        fit_masked = np.ma.MaskedArray(data=fit, mask=weights.mask)
+        Pnew[i] = np.ma.filled(fit_masked, 0.0)
     
     return Pnew
 
