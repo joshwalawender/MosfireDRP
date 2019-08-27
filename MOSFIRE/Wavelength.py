@@ -67,6 +67,8 @@ from scipy import signal
 from scipy import optimize
 from matplotlib.widgets import Button
 from numpy.polynomial import chebyshev as CV
+import ccdproc
+from astropy.nddata import CCDData
 
 
 from MOSFIRE import CSU, Fit, IO, Options, Filters, Detector
@@ -139,7 +141,9 @@ def imcombine(files, maskname, bandname, options, extension=None):
     flat = IO.readfits(pixelflat_file, use_bpm=True)[1]
     flat = flat.filled(1.0)
 
+    nobsfiles = len(files)
     files = IO.list_file_to_strings(files)
+    nfitsfiles = len(files)
 
     info("combining Wavelength files")
     for file in files:
@@ -233,7 +237,26 @@ def imcombine(files, maskname, bandname, options, extension=None):
     wavename = filelist_to_wavename(files, bandname, maskname, options)
     info('Combining images to make {}'.format(wavename))
     header.set("frameid", "median")
-    electrons = np.median(np.array(ADUs) * Detector.gain, axis=0)
+#     electrons = np.median(np.array(ADUs) * Detector.gain, axis=0)
+
+    ims = [CCDData(im * Detector.gain, unit='electron') for im in ADUs]
+    if nobsfiles >= 2:
+        nhigh = int(nfitsfiles/nobsfiles)+1
+        if nfitsfiles - nhigh > 3:
+            nlow = 1
+    else:
+        nhigh = 0
+        nlow = 0
+        if nfitsfiles > 5:
+            nhigh = 1
+            nlow = 1
+    print(nobsfiles, nfitsfiles, nlow, nhigh)
+    info(f'Median combining {nfitsfiles} from {nobsfiles} slit positions')
+    info(f'Rejecting {nlow} low values and {nhigh} high values')
+    combined = ccdproc.combine(ims, method='median', clip_extrema=True,
+                               nlow=nlow, nhigh=nhigh)
+    electrons = combined.data
+
     IO.writefits(electrons, maskname, wavename, options, overwrite=True,
             header=header)
     info("Done")
