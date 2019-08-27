@@ -250,7 +250,7 @@ def imcombine(files, maskname, bandname, options, extension=None):
         if nfitsfiles > 5:
             nhigh = 1
             nlow = 1
-    info(f'Median combining {nfitsfiles} from {nobsfiles} slit positions')
+    info(f'Median combining {nfitsfiles} files from {nobsfiles} slit positions')
     info(f'Rejecting {nlow} low values and {nhigh} high values')
     combined = ccdproc.combine(ims, method='median', clip_extrema=True,
                                nlow=nlow, nhigh=nhigh)
