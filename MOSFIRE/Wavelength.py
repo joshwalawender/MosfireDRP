@@ -240,13 +240,13 @@ def imcombine(files, maskname, bandname, options, extension=None):
 #     electrons = np.median(np.array(ADUs) * Detector.gain, axis=0)
 
     ims = [CCDData(im * Detector.gain, unit='electron') for im in ADUs]
+    nhigh = 0
+    nlow = 0
     if nobsfiles >= 2:
         nhigh = int(nfitsfiles/nobsfiles)+1
         if nfitsfiles - nhigh > 3:
             nlow = 1
     else:
-        nhigh = 0
-        nlow = 0
         if nfitsfiles > 5:
             nhigh = 1
             nlow = 1
