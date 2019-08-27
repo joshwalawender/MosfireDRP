@@ -119,7 +119,8 @@ def filelist_to_path(files, band, maskname, options):
 
     return outf
 
-def imcombine(files, maskname, bandname, options, extension=None):
+def imcombine(files, maskname, bandname, options, extension=None,
+              remove_star=False):
     ''' This version of imcombine is used to create the wave_stack file
     which is used only by the wavelength fitting routine. This imcombine does
     not produce science results.
@@ -237,24 +238,26 @@ def imcombine(files, maskname, bandname, options, extension=None):
     wavename = filelist_to_wavename(files, bandname, maskname, options)
     info('Combining images to make {}'.format(wavename))
     header.set("frameid", "median")
-#     electrons = np.median(np.array(ADUs) * Detector.gain, axis=0)
-
-    ims = [CCDData(im * Detector.gain, unit='electron') for im in ADUs]
-    nhigh = 0
-    nlow = 0
-    if nobsfiles >= 2:
-        nhigh = int(nfitsfiles/nobsfiles)+1
-        if nfitsfiles - nhigh > 3:
-            nlow = 1
+    
+    if remove_star is False:
+        electrons = np.median(np.array(ADUs) * Detector.gain, axis=0)
     else:
-        if nfitsfiles > 5:
-            nhigh = 1
-            nlow = 1
-    info(f'Median combining {nfitsfiles} files from {nobsfiles} slit positions')
-    info(f'Rejecting {nlow} low values and {nhigh} high values')
-    combined = ccdproc.combine(ims, method='median', clip_extrema=True,
-                               nlow=nlow, nhigh=nhigh)
-    electrons = combined.data
+        ims = [CCDData(im * Detector.gain, unit='electron') for im in ADUs]
+        nhigh = 0
+        nlow = 0
+        if nobsfiles >= 2:
+            nhigh = int(nfitsfiles/nobsfiles)+1
+            if nfitsfiles - nhigh > 3:
+                nlow = 1
+        else:
+            if nfitsfiles > 5:
+                nhigh = 1
+                nlow = 1
+        info(f'Median combining {nfitsfiles} files from {nobsfiles} slit positions')
+        info(f'Rejecting {nlow} low values and {nhigh} high values')
+        combined = ccdproc.combine(ims, method='median', clip_extrema=True,
+                                   nlow=nlow, nhigh=nhigh)
+        electrons = combined.data
 
     IO.writefits(electrons, maskname, wavename, options, overwrite=True,
             header=header)
