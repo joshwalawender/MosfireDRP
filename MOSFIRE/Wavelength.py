@@ -133,6 +133,9 @@ def imcombine(files, maskname, bandname, options, extension=None,
         extension: path to file that contains a well formated fits header
             this should be used only when the detector server fails
             to write the full FITS header
+        remove_star: If True, this will reject enough files from the combine to
+            remove (or significantly reduce) the flux of bright stars in the
+            spectra at the cost of reduced total SNR on the sky lines.
     
     Results:
         writes a median combined image in electron. It is called
